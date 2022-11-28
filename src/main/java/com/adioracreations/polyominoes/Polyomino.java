@@ -1,5 +1,3 @@
-package com.adioracreations.polyominoes;
-
 import java.util.ArrayList;
 
 class Polyomino {
@@ -21,25 +19,25 @@ class Polyomino {
 
         combinations.add(combination);
     }
-
+    
     public void generate() {
         boolean[][] combination = combinations.get(0);
         combinations.set(0, getTrimmed(combination));
 
         generate(combination);
     }
-
+    
     private void generate(boolean[][] combination) {
+    
         for(int i = 0; i < combination.length; i++) {
             for(int j = 0; j < combination[0].length; j++) {
-
                 if(combination[i][j] && getBounds(combination, i, j) == 1) {
+                    
                     for(int m = 0; m < combination.length; m++) {
                         for(int n = 0; n < combination[0].length; n++) {
-
+                            
                             combination[i][j] = false;
-                            if(isValid(combination, m, n) && m != i && n != j) {
-
+                            if(isValid(combination, m, n) && (m != i || n != j)) {
                                 boolean[][] sub_combination = getDuplicate(combination);
                                 sub_combination[m][n] = true;
 
@@ -59,9 +57,7 @@ class Polyomino {
     }
 
     private boolean isSame(boolean[][] combination) {
-
         for(boolean[][] sub_combination : combinations) {
-
             if(sub_combination.length == combination.length && sub_combination[0].length == combination[0].length
                     && (isEqual(sub_combination, combination) ||
                     isEqualHorizontally(sub_combination, combination) ||
