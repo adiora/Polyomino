@@ -1,3 +1,5 @@
+package com.adioracreations.polyominoes;
+
 import java.util.ArrayList;
 
 class Polyomino {
