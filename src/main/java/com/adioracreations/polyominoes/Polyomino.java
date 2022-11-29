@@ -201,11 +201,4 @@ class Polyomino {
         }
         return sb.toString();
     }
-
-    public void print(boolean[][] pattern) {
-        for (boolean[] booleans : pattern) {
-            for (boolean aBoolean : booleans) System.out.print(aBoolean ? "1" : " ");
-            System.out.println();
-        }
-    }
 }
