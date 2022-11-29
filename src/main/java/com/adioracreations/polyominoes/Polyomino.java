@@ -1,10 +1,13 @@
 package com.adioracreations.polyominoes;
 
 import java.util.ArrayList;
+import java.util.Stack;
 
 class Polyomino {
 
-    private final ArrayList<boolean[][]> combinations = new ArrayList<>();
+    private final ArrayList<boolean[][]> patterns = new ArrayList<>();
+
+    private final Stack<boolean[][]> rawPatterns = new Stack<>();
 
     private final int order;
 
@@ -14,43 +17,42 @@ class Polyomino {
     }
 
     private void initialize() {
-        boolean[][] combination = new boolean[order][order/2+1];
+        boolean[][] pattern = new boolean[order][order/2+1];
 
         for(int i = 0; i < order; i++)
-            combination[i][0] = true;
+            pattern[i][0] = true;
 
-        combinations.add(combination);
+        patterns.add(getTrimmed(pattern));
+        rawPatterns.add(pattern);
     }
     
     public void generate() {
-        boolean[][] combination = combinations.get(0);
-        combinations.set(0, getTrimmed(combination));
+        boolean[][] pattern;
+        while (!rawPatterns.isEmpty()) {
+            pattern = rawPatterns.pop();
 
-        generate(combination);
-    }
-    
-    private void generate(boolean[][] combination) {
-    
-        for(int i = 0; i < combination.length; i++) {
-            for(int j = 0; j < combination[0].length; j++) {
-                if(combination[i][j] && getBounds(combination, i, j) == 1) {
-                    
-                    for(int m = 0; m < combination.length; m++) {
-                        for(int n = 0; n < combination[0].length; n++) {
-                            
-                            combination[i][j] = false;
-                            if(isValid(combination, m, n) && (m != i || n != j)) {
-                                boolean[][] sub_combination = getDuplicate(combination);
-                                sub_combination[m][n] = true;
+            for (int i = 0; i < pattern.length; i++) {
+                for (int j = 0; j < pattern[0].length; j++) {
 
-                                boolean[][] trimmed = getTrimmed(sub_combination);
+                    if (pattern[i][j] && getBounds(pattern, i, j) == 1) {
+                        for (int m = 0; m < pattern.length; m++) {
+                            for (int n = 0; n < pattern[0].length; n++) {
 
-                                if(!isSame(trimmed)) {
-                                    combinations.add(trimmed);
-                                    generate(sub_combination);
+                                pattern[i][j] = false;
+                                if ((m != i || n != j) && isValid(pattern, m, n)) {
+
+                                    boolean[][] nPattern = getDuplicate(pattern);
+                                    nPattern[m][n] = true;
+
+                                    boolean[][] trimmed = getTrimmed(nPattern);
+
+                                    if (isNotSame(trimmed)) {
+                                        patterns.add(trimmed);
+                                        rawPatterns.push(nPattern);
+                                    }
                                 }
+                                pattern[i][j] = true;
                             }
-                            combination[i][j] = true;
                         }
                     }
                 }
@@ -58,38 +60,40 @@ class Polyomino {
         }
     }
 
-    private boolean isSame(boolean[][] combination) {
-        for(boolean[][] sub_combination : combinations) {
-            if(sub_combination.length == combination.length && sub_combination[0].length == combination[0].length
-                    && (isEqual(sub_combination, combination) ||
-                    isEqualHorizontally(sub_combination, combination) ||
-                    isEqualVertically(sub_combination, combination) ||
-                    isEqualVerticallyHorizontally(sub_combination, combination))) return true;
+    public boolean isNotSame(boolean[][] nPattern) {
 
-            else if(sub_combination.length == combination[0].length && sub_combination[0].length == combination.length) {
-                boolean[][] rotated = getRotated(combination);
-                if(isEqual(sub_combination, rotated) ||
-                        isEqualHorizontally(sub_combination, rotated) ||
-                        isEqualVertically(sub_combination, rotated) ||
-                        isEqualVerticallyHorizontally(sub_combination, rotated)) return true;
+        for(boolean[][] pattern : patterns) {
+
+            if(pattern.length == nPattern.length && pattern[0].length == nPattern[0].length
+                    && (isEqual(pattern, nPattern) ||
+                    isEqualHorizontally(pattern, nPattern) ||
+                    isEqualVertically(pattern, nPattern) ||
+                    isEqualVerticallyHorizontally(pattern, nPattern))) return false;
+
+            else if(pattern.length == nPattern[0].length && pattern[0].length == nPattern.length) {
+                boolean[][] rotated = getRotated(nPattern);
+                if(isEqual(pattern, rotated) ||
+                        isEqualHorizontally(pattern, rotated) ||
+                        isEqualVertically(pattern, rotated) ||
+                        isEqualVerticallyHorizontally(pattern, rotated)) return false;
             }
         }
-        return false;
+        return true;
     }
 
-    private static boolean[][] getDuplicate(boolean[][] combination) {
-        boolean[][] duplicate = new boolean[combination.length][combination[0].length];
-        for(int k = 0; k < combination.length; k++)
-            System.arraycopy(combination[k], 0, duplicate[k], 0, combination[0].length);
+    private static boolean[][] getDuplicate(boolean[][] pattern) {
+        boolean[][] duplicate = new boolean[pattern.length][pattern[0].length];
+        for(int k = 0; k < pattern.length; k++)
+            System.arraycopy(pattern[k], 0, duplicate[k], 0, pattern[0].length);
         return duplicate;
     }
 
-    private static boolean[][] getTrimmed(boolean[][] combination) {
-        int startX = combination[0].length -1, endX = 0, startY = combination.length -1, endY = 0;
+    private static boolean[][] getTrimmed(boolean[][] pattern) {
+        int startX = pattern[0].length -1, endX = 0, startY = pattern.length -1, endY = 0;
 
-        for(int i = 0; i < combination.length; i++) {
-            for (int j = 0; j < combination[0].length; j++) {
-                if (combination[i][j]) {
+        for(int i = 0; i < pattern.length; i++) {
+            for (int j = 0; j < pattern[0].length; j++) {
+                if (pattern[i][j]) {
                     if(startX > j)
                         startX = j;
                     if(startY > i)
@@ -109,92 +113,99 @@ class Polyomino {
 
         for (int m = 0; startY < endY; m++, startY++)
             for (int n = 0, l = startX; l < endX; n++, l++)
-                trimmed[m][n] = combination[startY][l];
+                trimmed[m][n] = pattern[startY][l];
 
         return trimmed;
     }
 
-    private static boolean[][] getRotated(boolean[][] combination) {
-        boolean[][] rotated = new boolean[combination[0].length][combination.length];
+    private static boolean[][] getRotated(boolean[][] pattern) {
+        boolean[][] rotated = new boolean[pattern[0].length][pattern.length];
 
-        for (int i = 0; i < combination[0].length; i++)
-            for (int j = 0; j < combination.length; j++)
-                rotated[i][j] = combination[combination.length - j -1][i];
+        for (int i = 0; i < pattern[0].length; i++)
+            for (int j = 0; j < pattern.length; j++)
+                rotated[i][j] = pattern[pattern.length - j -1][i];
 
         return rotated;
     }
 
-    private static boolean isEqual(boolean[][] combination1, boolean[][] combination2) {
-        if(combination1.length == combination2.length && combination1[0].length == combination2[0].length) {
-            for (int i = 0; i < combination1.length; i++)
-                for (int j = 0; j < combination1[0].length; j++)
-                    if (combination1[i][j] != combination2[i][j]) return false;
+    private static boolean isEqual(boolean[][] pattern1, boolean[][] pattern2) {
+        if(pattern1.length == pattern2.length && pattern1[0].length == pattern2[0].length) {
+            for (int i = 0; i < pattern1.length; i++)
+                for (int j = 0; j < pattern1[0].length; j++)
+                    if (pattern1[i][j] != pattern2[i][j]) return false;
             return true;
         }
         return false;
     }
 
-    private static boolean isEqualHorizontally(boolean[][] combination1, boolean[][] combination2) {
-        for(int i = 0; i < combination1.length; i++)
-            for(int j = 0; j < combination1[0].length; j++)
-                if(combination1[i][j] != combination2[i][combination1[0].length - j - 1]) return false;
+    private static boolean isEqualHorizontally(boolean[][] pattern1, boolean[][] pattern2) {
+        for(int i = 0; i < pattern1.length; i++)
+            for(int j = 0; j < pattern1[0].length; j++)
+                if(pattern1[i][j] != pattern2[i][pattern1[0].length - j - 1]) return false;
 
         return true;
     }
 
-    private static boolean isEqualVertically(boolean[][] combination1, boolean[][] combination2) {
-        for(int i = 0; i < combination1.length; i++)
-            for(int j = 0; j < combination1[0].length; j++)
-                if(combination1[i][j] != combination2[combination1.length - i - 1][j]) return false;
+    private static boolean isEqualVertically(boolean[][] pattern1, boolean[][] pattern2) {
+        for(int i = 0; i < pattern1.length; i++)
+            for(int j = 0; j < pattern1[0].length; j++)
+                if(pattern1[i][j] != pattern2[pattern1.length - i - 1][j]) return false;
 
         return true;
     }
 
-    private static boolean isEqualVerticallyHorizontally(boolean[][] combination1, boolean[][] combination2) {
-        for(int i = 0; i < combination1.length; i++)
-            for(int j = 0; j < combination1[0].length; j++)
-                if(combination1[i][j] != combination2[combination1.length - i - 1][combination1[0].length - j - 1]) return false;
+    private static boolean isEqualVerticallyHorizontally(boolean[][] pattern1, boolean[][] pattern2) {
+        for(int i = 0; i < pattern1.length; i++)
+            for(int j = 0; j < pattern1[0].length; j++)
+                if(pattern1[i][j] != pattern2[pattern1.length - i - 1][pattern1[0].length - j - 1]) return false;
 
         return true;
     }
 
-    private static int getBounds(boolean[][] combination, int y, int x) {
+    private static int getBounds(boolean[][] pattern, int y, int x) {
         int bound = 0;
 
-        if(isBound(combination, y, x-1)) bound++;
-        if(isBound(combination, y, x+1)) bound++;
-        if(isBound(combination, y-1, x)) bound++;
-        if(isBound(combination, y+1, x)) bound++;
+        if(isBound(pattern, y, x-1)) bound++;
+        if(isBound(pattern, y, x+1)) bound++;
+        if(isBound(pattern, y-1, x)) bound++;
+        if(isBound(pattern, y+1, x)) bound++;
 
         return bound;
     }
 
-    private static boolean exists(boolean[][] combination, int y, int x) {
-        return x > -1 && x < combination[0].length && y > -1 && y < combination.length;
+    private static boolean exists(boolean[][] pattern, int y, int x) {
+        return x > -1 && x < pattern[0].length && y > -1 && y < pattern.length;
     }
 
-    private static boolean isBound(boolean[][] combination, int y, int x) {
-        return exists(combination, y, x) && combination[y][x];
+    private static boolean isBound(boolean[][] pattern, int y, int x) {
+        return exists(pattern, y, x) && pattern[y][x];
     }
 
-    private static boolean isValid(boolean[][] combination, int y, int x) {
-        return !combination[y][x] && getBounds(combination, y, x) > 0;
+    private static boolean isValid(boolean[][] pattern, int y, int x) {
+        return !pattern[y][x] && getBounds(pattern, y, x) > 0;
     }
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder("All Combinations: \n");
+        StringBuilder sb = new StringBuilder("All patterns: \n");
         int i = 0;
-        for (boolean[][] combination : combinations) {
-            sb.append("Combination ");
+        for (boolean[][] pattern : patterns) {
+            sb.append("pattern ");
             sb.append(++i);
             sb.append('\n');
-            for (boolean[] rBoolean : combination) {
+            for (boolean[] rBoolean : pattern) {
                 for (boolean cBoolean : rBoolean)
                     sb.append(cBoolean? "1" : " ");
                 sb.append('\n');
             }
         }
         return sb.toString();
+    }
+
+    public void print(boolean[][] pattern) {
+        for (boolean[] booleans : pattern) {
+            for (boolean aBoolean : booleans) System.out.print(aBoolean ? "1" : " ");
+            System.out.println();
+        }
     }
 }
